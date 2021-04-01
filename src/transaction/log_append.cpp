@@ -1353,6 +1353,8 @@ prior_lsa_next_record_internal (THREAD_ENTRY *thread_p, LOG_PRIOR_NODE *node, LO
   LOG_VACUUM_INFO *vacuum_info = NULL;
   MVCCID mvccid = MVCCID_NULL;
 
+  int rcvindex = 0;
+
   if (with_lock == LOG_PRIOR_LSA_WITHOUT_LOCK)
     {
       log_Gl.prior_info.prior_lsa_mutex.lock ();
@@ -1406,6 +1408,7 @@ prior_lsa_next_record_internal (THREAD_ENTRY *thread_p, LOG_PRIOR_NODE *node, LO
 	  mvcc_undoredo = (LOG_REC_MVCC_UNDOREDO *) node->data_header;
 	  vacuum_info = &mvcc_undoredo->vacuum_info;
 	  mvccid = mvcc_undoredo->mvccid;
+          rcvindex = mvcc_undoredo->undoredo.data.rcvindex;
 	}
 
       /* Save previous mvcc operation log lsa to vacuum info */
@@ -1469,21 +1472,41 @@ prior_lsa_next_record_internal (THREAD_ENTRY *thread_p, LOG_PRIOR_NODE *node, LO
       tdes->rcv.atomic_sysop_start_lsa = start_lsa;
     }
 
+  if (rcvindex == 49){
+    fprintf (stdout, "MVCC ID : %d \n", mvcc_undoredo->mvccid);
+    fprintf (stdout, " log data pageid : %d , offset : %d, volid : %d \n", mvcc_undoredo->undoredo.data.pageid, mvcc_undoredo->undoredo.data.offset, mvcc_undoredo->undoredo.data.volid);
+    fprintf(stdout, "start lsa : (%d | %d )\n", start_lsa.pageid, start_lsa.offset);
+    fprintf(stdout, "before data header add, lsa ( %d | %d )\n", log_Gl.prior_info.prior_lsa.pageid, log_Gl.prior_info.prior_lsa.offset);
+  }
   log_prior_lsa_append_advance_when_doesnot_fit (node->data_header_length);
   log_prior_lsa_append_add_align (node->data_header_length);
 
+  if (rcvindex == 49){
+    fprintf(stdout, "after data header add,  lsa ( %d | %d) \n", log_Gl.prior_info.prior_lsa.pageid, log_Gl.prior_info.prior_lsa.offset); 
+  }
   if (node->ulength > 0)
     {
       prior_lsa_append_data (node->ulength);
+      if (rcvindex == 49){
+        fprintf(stdout, "after undo data  add,  lsa ( %d | %d) \n", log_Gl.prior_info.prior_lsa.pageid, log_Gl.prior_info.prior_lsa.offset); 
+        fprintf(stdout, "undo length : %d \n", node->ulength); 
+      }
     }
 
   if (node->rlength > 0)
     {
       prior_lsa_append_data (node->rlength);
+      if(rcvindex == 49){
+        fprintf(stdout, "after redo data  add,  lsa ( %d | %d) \n", log_Gl.prior_info.prior_lsa.pageid, log_Gl.prior_info.prior_lsa.offset); 
+        fprintf(stdout, "redo length : %d \n", node->rlength);
+      }
     }
 
   /* END append */
   prior_lsa_end_append (thread_p, node);
+  if(rcvindex == 49){
+    fprintf(stdout, "after end align,  lsa ( %d | %d) \n", log_Gl.prior_info.prior_lsa.pageid, log_Gl.prior_info.prior_lsa.offset); 
+  }
 
   if (log_Gl.prior_info.prior_list_tail == NULL)
     {

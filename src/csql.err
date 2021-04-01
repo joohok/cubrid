@@ -1,0 +1,208 @@
+
+Time: 02/16/21 08:51:42.737 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1693
+trying to connect 'demodb@localhost'
+
+Time: 02/16/21 08:51:42.738 - ERROR *** file /home/joohok/Documents/joohok_cubrid/src/connection/connection_cl.c, line 756 ERROR CODE = -353, Tran = -1, EID = 1
+Cannot make connection to master server on host "localhost".... Permission denied
+
+Time: 02/16/21 08:51:42.738 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1745
+error -353. try to connect to next host
+
+Time: 02/16/21 08:51:42.738 - ERROR *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1777 ERROR CODE = -677, Tran = -1, EID = 2
+Failed to connect to database server, 'demodb', on the following host(s): localhost
+
+Time: 02/16/21 08:51:42.738 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1127
+boot_restart_client: boot_client_initialize_css () error -353
+
+Time: 02/16/21 08:51:53.910 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1181
+boot_restart_client: register client { type 2 db demodb user dba password (null) program csql login joohok host rnd06.cubrid.com pid 20378 }
+
+Time: 02/16/21 08:51:54.712 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2214
+Created volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_dwb
+
+Time: 02/16/21 08:51:54.722 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/log_manager.c, line 1014
+LOG INITIALIZE
+	db_fullname = /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb 
+	logpath = /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb 
+	prefix_logname = demodb 
+	ismedia_crash = 0 
+
+Time: 02/16/21 08:51:55.828 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2792
+Destroyed volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_lgar_t
+
+Time: 02/16/21 08:51:55.828 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2214
+Created volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_lgar_t
+
+Time: 02/16/21 08:51:55.977 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/log_manager.c, line 1449
+log_initialize_internal: end of log initializaton, append_lsa = (772|792) 
+
+Time: 02/16/21 08:51:56.167 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 987  CODE = -1190, Tran = -1, EID = 1
+Stand-alone vacuum execution is started.
+
+Time: 02/16/21 08:51:56.167 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 988
+Stand-alone vacuum start.
+
+Time: 02/16/21 08:51:56.169 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 1080  CODE = -1191, Tran = -1, EID = 2
+Stand-alone vacuum execution is ended.
+
+Time: 02/16/21 08:51:56.169 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 1081
+Stand-alone vacuum end.
+
+Time: 02/16/21 08:51:56.169 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/partition.c, line 716
+creating partition cache
+
+Time: 02/16/21 08:51:56.169 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 235  CODE = -973, Tran = -1, EID = 3
+Server status is UP.
+
+Time: 02/16/21 08:52:01.871 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/query_manager.c, line 1189
+TDE: qmgr_process_query(): includes_tde_class = 0
+
+Time: 02/16/21 08:52:15.498 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/query_manager.c, line 1189
+TDE: qmgr_process_query(): includes_tde_class = 0
+
+Time: 02/16/21 08:52:15.546 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2214
+Created volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_t32766
+
+Time: 02/16/21 08:52:55.596 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2792
+Destroyed volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_t32766
+
+Time: 02/16/21 08:52:55.763 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2792
+Destroyed volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_dwb
+
+Time: 02/16/21 08:52:55.766 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 235  CODE = -973, Tran = 1, EID = 5
+Server status is DOWN.
+
+Time: 02/16/21 08:52:55.766 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/partition.c, line 751
+deleting partition cache
+
+Time: 02/16/21 10:30:05.787 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_cl.c, line 1181
+boot_restart_client: register client { type 2 db demodb user dba password (null) program csql login joohok host rnd06.cubrid.com pid 29340 }
+
+Time: 02/16/21 10:30:06.693 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2214
+Created volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_dwb
+
+Time: 02/16/21 10:30:06.707 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/log_manager.c, line 1014
+LOG INITIALIZE
+	db_fullname = /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb 
+	logpath = /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb 
+	prefix_logname = demodb 
+	ismedia_crash = 0 
+
+Time: 02/16/21 10:30:07.784 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2792
+Destroyed volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_lgar_t
+
+Time: 02/16/21 10:30:07.784 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2214
+Created volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_lgar_t
+
+Time: 02/16/21 10:30:07.859 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/transaction/log_manager.c, line 1449
+log_initialize_internal: end of log initializaton, append_lsa = (772|1848) 
+
+Time: 02/16/21 10:30:07.982 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 987  CODE = -1190, Tran = -1, EID = 1
+Stand-alone vacuum execution is started.
+
+Time: 02/16/21 10:30:07.982 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 988
+Stand-alone vacuum start.
+
+Time: 02/16/21 10:30:07.984 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 1080  CODE = -1191, Tran = -1, EID = 2
+Stand-alone vacuum execution is ended.
+
+Time: 02/16/21 10:30:07.984 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/vacuum.c, line 1081
+Stand-alone vacuum end.
+
+Time: 02/16/21 10:30:07.984 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/partition.c, line 716
+creating partition cache
+
+Time: 02/16/21 10:30:07.984 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 235  CODE = -973, Tran = -1, EID = 3
+Server status is UP.
+
+Time: 02/17/21 17:09:18.031 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/storage/file_io.c, line 2792
+Destroyed volume /home/joohok/Documents/joohok_cubrid/build_x86_64_debug/CUBRID-11.0.0.0227-ec268a5-Linux.x86_64-debug/databases/demodb/demodb_dwb
+
+Time: 02/17/21 17:09:18.037 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 235  CODE = -973, Tran = 1, EID = 5
+Server status is DOWN.
+
+Time: 02/17/21 17:09:18.037 - DEBUG *** file /home/joohok/Documents/joohok_cubrid/src/query/partition.c, line 751
+deleting partition cache
+
+Time: 02/19/21 17:28:04.162 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1701
+trying to connect 'demodb@localhost'
+
+Time: 02/19/21 17:28:04.163 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1723
+ping server with handshake
+
+Time: 02/19/21 17:28:04.163 - NOTIFICATION *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1130  CODE = -971, Tran = -1, EID = 1
+Program 'csql' (pid 5229) connected to database server 'demodb' on the host 'localhost' (port 15093).
+
+Time: 02/19/21 17:28:04.164 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1180
+boot_restart_client: register client { type 2 db demodb user dba password (null) program csql login joohok host rnd06.cubrid.com pid 5229 }
+
+Time: 02/19/21 17:28:13.714 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6424
+qmgr_execute_query requested: EXECUTION_WITHOUT_AUTOCOMMIT
+
+Time: 02/19/21 17:32:25.545 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6420
+qmgr_execute_query requested: EXECUTION_WITH_AUTOCOMMIT
+
+Time: 02/19/21 17:36:16.712 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/compat/db_vdb.c, line 941 ERROR CODE = -492, Tran = 2, EID = 2
+In line 3, column 17 before END OF STATEMENT
+Syntax error: unexpected ';', expecting OF
+
+Time: 02/19/21 17:36:23.941 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/compat/db_vdb.c, line 941 ERROR CODE = -492, Tran = 2, EID = 3
+In line 3, column 18 before '; '
+Syntax error: unexpected 'ALL', expecting OF
+
+Time: 02/19/21 17:36:36.737 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/parser/query_result.c, line 378 ERROR CODE = -494, Tran = 2, EID = 4
+Semantic: Unknown class "dual". show heap header of 'dual'
+
+Time: 02/19/21 17:36:36.737 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/compat/db_vdb.c, line 941 ERROR CODE = -492, Tran = 2, EID = 5
+Unknown class "dual".
+
+Time: 02/19/21 17:36:47.222 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/parser/query_result.c, line 378 ERROR CODE = -494, Tran = 2, EID = 6
+Semantic: Operation can only be performed on class objects. show heap header of 'db_class'
+
+Time: 02/19/21 17:36:47.222 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/compat/db_vdb.c, line 941 ERROR CODE = -492, Tran = 2, EID = 7
+Operation can only be performed on class objects.
+
+Time: 02/19/21 17:36:50.882 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6420
+qmgr_execute_query requested: EXECUTION_WITH_AUTOCOMMIT
+
+Time: 02/19/21 17:37:05.869 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6424
+qmgr_execute_query requested: EXECUTION_WITHOUT_AUTOCOMMIT
+
+Time: 02/19/21 17:37:25.337 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/parser/query_result.c, line 378 ERROR CODE = -494, Tran = 2, EID = 8
+Semantic: Operation can only be performed on class objects. show heap header of 'db_charset'
+
+Time: 02/19/21 17:37:25.337 - SYNTAX ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/compat/db_vdb.c, line 941 ERROR CODE = -492, Tran = 2, EID = 9
+Operation can only be performed on class objects.
+
+Time: 02/19/21 17:37:29.312 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6420
+qmgr_execute_query requested: EXECUTION_WITH_AUTOCOMMIT
+
+Time: 02/19/21 17:37:39.153 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6424
+qmgr_execute_query requested: EXECUTION_WITHOUT_AUTOCOMMIT
+
+Time: 02/19/21 17:37:51.242 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6420
+qmgr_execute_query requested: EXECUTION_WITH_AUTOCOMMIT
+
+Time: 02/19/21 17:50:33.005 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1701
+trying to connect 'demodb@localhost'
+
+Time: 02/19/21 17:50:33.007 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1723
+ping server with handshake
+
+Time: 02/19/21 17:50:33.008 - NOTIFICATION *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1130  CODE = -971, Tran = -1, EID = 1
+Program 'csql' (pid 7758) connected to database server 'demodb' on the host 'localhost' (port 15093).
+
+Time: 02/19/21 17:50:33.010 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 1180
+boot_restart_client: register client { type 2 db demodb user dba password (null) program csql login joohok host rnd06.cubrid.com pid 7758 }
+
+Time: 02/19/21 17:50:33.025 - DEBUG *** file /home/joohok/Documents/cubrid_for_logmanager/src/communication/network_interface_cl.c, line 6420
+qmgr_execute_query requested: EXECUTION_WITH_AUTOCOMMIT
+
+Time: 03/31/21 16:20:11.763 - ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/base/databases_file.c, line 1089 ERROR CODE = -676, Tran = -1, EID = 1
+Database 'testdb', cannot be found in the database location file, 'databases.txt'
+
+Time: 03/31/21 16:20:11.763 - ERROR *** file /home/joohok/Documents/cubrid_for_logmanager/src/transaction/boot_cl.c, line 904 ERROR CODE = -116, Tran = -1, EID = 2
+Database "testdb" is unknown, or the file "databases.txt" cannot be accessed.
+
+*** The previous error message is the last one. ***
+

@@ -305,6 +305,8 @@ static void log_sysop_do_postpone (THREAD_ENTRY * thread_p, LOG_TDES * tdes, LOG
 				   int data_size, const char *data);
 
 static int logtb_tran_update_stats_online_index_rb (THREAD_ENTRY * thread_p, void *data, void *args);
+static int temp_dumpf (THREAD_ENTRY *thread_p, FILE *out_fp, int length, void *data, OID oid, HEAP_CACHE_ATTRINFO *attr_info);
+static void heap_read_dbvalues_from_log (THREAD_ENTRY * thread_p, FILE * out_fp, int length, LOG_LSA * log_lsa, LOG_PAGE * log_page_p, LOG_ZIP * log_dump_ptr, OID oid, HEAP_CACHE_ATTRINFO * attrinfo);
 
 #if defined(SERVER_MODE)
 // *INDENT-OFF*
@@ -5814,6 +5816,30 @@ log_hexa_dump (FILE * out_fp, int length, void *data)
   fprintf (out_fp, "\n");
 }
 
+void log_mvcc_dump (FILE * out_fp, int length, void *data)
+{
+  RECDES rec;
+  int i;
+  char *ptr;
+  if(data == NULL){
+    log_hexa_dump(out_fp, length, data);
+  }else {
+    rec.type = *(INT16*)data;
+    rec.data = (char*)data + sizeof(rec.type);
+    fprintf (out_fp, "record type : %d\n",rec.type);
+    for (i = 0, ptr = (char *) rec.data; i < length-sizeof(rec.type); i++)
+    { 
+      fprintf (out_fp, "%02X ", (unsigned char) (*ptr++));
+      if (i % 16 == 15 && i != length)
+      {
+        fprintf (out_fp, "\n  %05d: ", i + 1);
+      }
+    }
+    fprintf (out_fp, "\n");
+  //for mvcc update
+  }
+}
+
 static void
 log_repl_data_dump (FILE * out_fp, int length, void *data)
 {
@@ -5986,6 +6012,10 @@ log_dump_record_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_
   int undo_length;
   int redo_length;
   LOG_RCVINDEX rcvindex;
+  
+  OID oid, classoid;
+  HEAP_CACHE_ATTRINFO attr_info;
+  int ret;
 
   /* Read the DATA HEADER */
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*undoredo), log_lsa, log_page_p);
@@ -5999,6 +6029,29 @@ log_dump_record_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_
   undo_length = undoredo->ulength;
   redo_length = undoredo->rlength;
   rcvindex = undoredo->data.rcvindex;
+
+  oid.volid = undoredo->data.volid;
+  oid.pageid = undoredo->data.pageid;
+  oid.slotid = undoredo->data.offset; 
+
+  if(rcvindex == 39){
+    /*RVHF UPDATE*/
+    LOG_READ_ADD_ALIGN (thread_p, sizeof(*undoredo), log_lsa, log_page_p);
+    /*LOG_READ_ADD_ALIGN (thread_p, sizeof(LOG_REC_UNDOREDO), log_lsa, log_page_p); 필요하지 않을까 */
+    ret = heap_get_class_oid(thread_p, &oid, &classoid);
+    fprintf(out_fp, "target CLASS OID : %d | %d | %d \n", classoid.volid, classoid.pageid, classoid.slotid);
+    ret = heap_attrinfo_start (thread_p, &classoid, -1, NULL, &attr_info);
+    if(ret == NO_ERROR){
+      fprintf(out_fp, "attrinfo-> num_values : %d \n", attr_info.num_values);
+    }
+    /* Print UNDO(BEFORE) DATA */
+    fprintf (out_fp, "-->> Undo (Before) Data:\n");
+    heap_read_dbvalues_from_log (thread_p, out_fp, undo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+     /* Print REDO (AFTER) DATA */
+    fprintf (out_fp, "-->> Redo (After) Data:\n");
+    heap_read_dbvalues_from_log (thread_p, out_fp, redo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+  }
+
 
   LOG_READ_ADD_ALIGN (thread_p, sizeof (*undoredo), log_lsa, log_page_p);
   /* Print UNDO(BEFORE) DATA */
@@ -6074,9 +6127,18 @@ log_dump_record_mvcc_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA *
   int redo_length;
   LOG_RCVINDEX rcvindex;
 
+  int ret ; 
+  OID oid, classoid ; 
+  HEAP_CACHE_ATTRINFO attr_info;
+
   /* Read the DATA HEADER */
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*mvcc_undoredo), log_lsa, log_page_p);
   mvcc_undoredo = (LOG_REC_MVCC_UNDOREDO *) ((char *) log_page_p->area + log_lsa->offset);
+  
+  oid.pageid = mvcc_undoredo->undoredo.data.pageid ;
+  oid.slotid = mvcc_undoredo->undoredo.data.offset;
+  oid.volid = mvcc_undoredo->undoredo.data.volid;
+
   fprintf (out_fp, ", Recv_index = %s, \n", rv_rcvindex_string (mvcc_undoredo->undoredo.data.rcvindex));
   fprintf (out_fp,
 	   "     Volid = %d Pageid = %d Offset = %d,\n     Undo(Before) length = %d, Redo(After) length = %d,\n",
@@ -6092,15 +6154,147 @@ log_dump_record_mvcc_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA *
   redo_length = mvcc_undoredo->undoredo.rlength;
   rcvindex = mvcc_undoredo->undoredo.data.rcvindex;
 
-  LOG_READ_ADD_ALIGN (thread_p, sizeof (*mvcc_undoredo), log_lsa, log_page_p);
-  /* Print UNDO(BEFORE) DATA */
-  fprintf (out_fp, "-->> Undo (Before) Data:\n");
-  log_dump_data (thread_p, out_fp, undo_length, log_lsa, log_page_p, RV_fun[rcvindex].dump_undofun, log_zip_p);
-  /* Print REDO (AFTER) DATA */
-  fprintf (out_fp, "-->> Redo (After) Data:\n");
-  log_dump_data (thread_p, out_fp, redo_length, log_lsa, log_page_p, RV_fun[rcvindex].dump_redofun, log_zip_p);
+  if(rcvindex == 43){
+    /*MVCC_INSERT*/
+    LOG_READ_ADD_ALIGN (thread_p, sizeof(*mvcc_undoredo), log_lsa, log_page_p);
+    ret = heap_get_class_oid(thread_p, &oid, &classoid);
+    ret = heap_attrinfo_start (thread_p, &classoid, -1, NULL, &attr_info);
+     /* Print UNDO(BEFORE) DATA */
+    fprintf (out_fp, "-->> Undo (Before) Data:\n");
+    heap_read_dbvalues_from_log(thread_p, out_fp, undo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+     /* Print REDO (AFTER) DATA */
+    fprintf (out_fp, "-->> Redo (After) Data:\n");
+     heap_read_dbvalues_from_log(thread_p, out_fp, redo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+    /*required to make a function that add a oid, attr info for dumping with attribute information */
+  }else if(rcvindex == 49){
+    /*MVCC_UPDATE*/
+    LOG_READ_ADD_ALIGN (thread_p, sizeof(*mvcc_undoredo), log_lsa, log_page_p);
+    /*LOG_READ_ADD_ALIGN (thread_p, sizeof(LOG_REC_UNDOREDO), log_lsa, log_page_p); 필요하지 않을까 */
+    ret = heap_get_class_oid(thread_p, &oid, &classoid);
+    fprintf(out_fp, "target CLASS OID : %d | %d | %d \n", classoid.volid, classoid.pageid, classoid.slotid);
+    ret = heap_attrinfo_start (thread_p, &classoid, -1, NULL, &attr_info); //memory
+    if(ret == NO_ERROR){
+      fprintf(out_fp, "attrinfo-> num_values : %d \n", attr_info.num_values);
+    }
+    /* Print UNDO(BEFORE) DATA */
+    fprintf (out_fp, "-->> Undo (Before) Data:\n");
 
+//    log_dump_data (thread_p, out_fp, undo_length, log_lsa, log_page_p, RV_fun[rcvindex].dump_undofun, log_zip_p);
+    heap_read_dbvalues_from_log (thread_p, out_fp, undo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+     /* Print REDO (AFTER) DATA */
+    fprintf (out_fp, "-->> Redo (After) Data:\n");
+    heap_read_dbvalues_from_log (thread_p, out_fp, redo_length, log_lsa, log_page_p, log_zip_p, oid, &attr_info);
+  }else{
+    LOG_READ_ADD_ALIGN (thread_p, sizeof (*mvcc_undoredo), log_lsa, log_page_p);
+    /* Print UNDO(BEFORE) DATA */
+    fprintf (out_fp, "-->> Undo (Before) Data:\n");
+    log_dump_data (thread_p, out_fp, undo_length, log_lsa, log_page_p, RV_fun[rcvindex].dump_undofun, log_zip_p);
+    /* Print REDO (AFTER) DATA */
+    fprintf (out_fp, "-->> Redo (After) Data:\n");
+    log_dump_data (thread_p, out_fp, redo_length, log_lsa, log_page_p, RV_fun[rcvindex].dump_redofun, log_zip_p);
+  }
   return log_page_p;
+}
+static int temp_dumpf (THREAD_ENTRY *thread_p, FILE *out_fp, int length, void *data, OID oid, HEAP_CACHE_ATTRINFO *attr_info)
+{
+  RECDES rec = RECDES_INITIALIZER;
+  char * ptr;
+  if(data == NULL){
+    log_hexa_dump(out_fp, length, data);
+  }else {
+    /*align 넣기 */
+    rec.type = *(INT16*)data;
+    rec.data = (char*)data + sizeof(rec.type);
+    rec.area_size = rec.length = length - sizeof (rec.type);
+    fprintf(out_fp, "type : %d , data : 0x%x \n", rec.type, rec.data);
+    if(rec.type == 2){
+      /*REC_HOME*/
+      ptr = (char*)malloc(rec.length); 
+      memcpy(ptr, rec.data , rec.length);
+      rec.data = ptr; 
+      heap_attrinfo_read_dbvalues_without_oid(thread_p, &rec, attr_info);
+      heap_attrinfo_dump (thread_p, out_fp, attr_info, true);
+      free(ptr); 
+
+//      heap_attrinfo_read_dbvalues(thread_p, &oid, &rec, NULL, attr_info);
+    }else{
+//      log_rv_dump_hexa(out_fp, length, data);
+    }
+  }
+}
+static void heap_read_dbvalues_from_log (THREAD_ENTRY * thread_p, FILE * out_fp, int length, LOG_LSA * log_lsa, LOG_PAGE * log_page_p, LOG_ZIP * log_dump_ptr, OID oid, HEAP_CACHE_ATTRINFO * attrinfo)
+{
+  char *ptr;			/* Pointer to data to be printed */
+  bool is_zipped = false;
+  bool is_unzipped = false;
+  /* Call the dumper function */
+
+  /*
+   * If data is contained in only one buffer, pass pointer directly.
+   * Otherwise, allocate a contiguous area, copy the data and pass this
+   * area. At the end deallocate the area
+   */
+
+
+  if (ZIP_CHECK (length))
+    {
+      length = (int) GET_ZIP_LEN (length);
+      is_zipped = true;
+    }
+
+  if (log_lsa->offset + length < (int) LOGAREA_SIZE)
+    {
+      /* Data is contained in one buffer */
+
+      ptr = (char *) log_page_p->area + log_lsa->offset;
+
+      if (length != 0 && is_zipped)
+	{
+	  is_unzipped = log_unzip (log_dump_ptr, length, ptr);
+	}
+
+      if (is_zipped && is_unzipped)
+	{
+	  temp_dumpf (thread_p, out_fp, (int) log_dump_ptr->data_length, log_dump_ptr->log_data, oid, attrinfo);
+	  log_lsa->offset += length;
+	}
+      else
+	{ 
+	  temp_dumpf (thread_p, out_fp, length, ptr, oid, attrinfo);
+	  log_lsa->offset += length;
+	}
+    }
+  else
+    {
+      /* Need to copy the data into a contiguous area */
+      ptr = (char *) malloc (length);
+      if (ptr == NULL)
+	{
+	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, (size_t) length);
+	  return;
+	}
+      /* Copy the data */
+      logpb_copy_from_log (thread_p, ptr, length, log_lsa, log_page_p);
+
+      if (is_zipped)
+	{
+	  is_unzipped = log_unzip (log_dump_ptr, length, ptr);
+	}
+
+      if (is_zipped && is_unzipped)
+	{
+	  temp_dumpf (thread_p, out_fp, (int) log_dump_ptr->data_length, log_dump_ptr->log_data, oid, attrinfo);
+          /**/
+	}
+      else
+	{
+	  temp_dumpf(thread_p, out_fp, length, ptr, oid, attrinfo);
+	}
+      free_and_init (ptr);
+    }
+  LOG_READ_ALIGN (thread_p, log_lsa, log_page_p);
+
+
 }
 
 static LOG_PAGE *
@@ -6616,16 +6810,16 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
     {
     case LOG_UNDOREDO_DATA:
     case LOG_DIFF_UNDOREDO_DATA:
-      log_page_p = log_dump_record_undoredo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_undoredo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_UNDO_DATA:
-      log_page_p = log_dump_record_undo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_undo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_REDO_DATA:
     case LOG_POSTPONE:
-      log_page_p = log_dump_record_redo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_redo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_MVCC_UNDOREDO_DATA:
@@ -6634,27 +6828,27 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
       break;
 
     case LOG_MVCC_UNDO_DATA:
-      log_page_p = log_dump_record_mvcc_undo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_mvcc_undo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_MVCC_REDO_DATA:
-      log_page_p = log_dump_record_mvcc_redo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_mvcc_redo (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_RUN_POSTPONE:
-      log_page_p = log_dump_record_postpone (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_postpone (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_DBEXTERN_REDO_DATA:
-      log_page_p = log_dump_record_dbout_redo (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_dbout_redo (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_COMPENSATE:
-      log_page_p = log_dump_record_compensate (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_compensate (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_COMMIT_WITH_POSTPONE:
-      log_page_p = log_dump_record_commit_postpone (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_commit_postpone (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_WILL_COMMIT:
@@ -6663,32 +6857,32 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
 
     case LOG_COMMIT:
     case LOG_ABORT:
-      log_page_p = log_dump_record_transaction_finish (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_transaction_finish (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_REPLICATION_DATA:
     case LOG_REPLICATION_STATEMENT:
-      log_page_p = log_dump_record_replication (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_replication (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_SYSOP_START_POSTPONE:
-      log_page_p = log_dump_record_sysop_start_postpone (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
+      //log_page_p = log_dump_record_sysop_start_postpone (thread_p, out_fp, log_lsa, log_page_p, log_zip_p);
       break;
 
     case LOG_SYSOP_END:
-      log_page_p = log_dump_record_sysop_end (thread_p, log_lsa, log_page_p, log_zip_p, out_fp);
+      //log_page_p = log_dump_record_sysop_end (thread_p, log_lsa, log_page_p, log_zip_p, out_fp);
       break;
 
     case LOG_END_CHKPT:
-      log_page_p = log_dump_record_checkpoint (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_checkpoint (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_SAVEPOINT:
-      log_page_p = log_dump_record_save_point (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_save_point (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_2PC_PREPARE:
-      log_page_p = log_dump_record_2pc_prepare_commit (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_2pc_prepare_commit (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_2PC_START:
@@ -6700,7 +6894,7 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
       break;
 
     case LOG_DUMMY_HA_SERVER_STATE:
-      log_page_p = log_dump_record_ha_server_state (thread_p, out_fp, log_lsa, log_page_p);
+      //log_page_p = log_dump_record_ha_server_state (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
     case LOG_START_CHKPT:

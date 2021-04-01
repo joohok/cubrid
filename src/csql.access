@@ -1,0 +1,12 @@
+
+Time: 02/16/21 08:51:56.169 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 3315  CODE = -972, Tran = -1, EID = 4
+Program 'csql' (pid 20378) was connected from the host 'rnd06.cubrid.com'. (transaction index 1)
+
+*** The previous error message is the last one. ***
+
+
+Time: 02/16/21 10:30:07.984 - NOTIFICATION *** file /home/joohok/Documents/joohok_cubrid/src/transaction/boot_sr.c, line 3315  CODE = -972, Tran = -1, EID = 4
+Program 'csql' (pid 29340) was connected from the host 'rnd06.cubrid.com'. (transaction index 1)
+
+*** The previous error message is the last one. ***
+
