@@ -26,6 +26,7 @@
 #include "log_impl.h"
 #include "page_server.hpp"
 #include "system_parameter.h"
+#include "util_func.h"
 
 #include <string>
 
