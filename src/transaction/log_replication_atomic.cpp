@@ -16,11 +16,21 @@
  *
  */
 
+#include "error_manager.h"
+#include "filter_pred_cache.h"
+#include "heap_file.h"
+#include "locator_sr.h"
+#include "lock_manager.h"
 #include "log_replication.cpp.hpp"
 #include "log_replication_atomic.hpp"
 #include "log_replication_jobs.hpp"
 
 #include "log_recovery_redo_parallel.hpp"
+#include "oid.h"
+#include "partition_sr.h"
+#include "storage_common.h"
+#include "xasl_cache.h"
+#include <thread>
 
 namespace cublog
 {
@@ -61,10 +71,13 @@ namespace cublog
 
 	const LOG_RECORD_HEADER header = m_redo_context.m_reader.reinterpret_copy_and_add_align<LOG_RECORD_HEADER> ();
 
+	const int tranid = header.trid;
+
 	{
 	  std::unique_lock<std::mutex> lock (m_processed_lsa_mutex);
 	  m_processed_lsa = m_redo_lsa;
 	}
+
 
 	switch (header.type)
 	  {
@@ -120,6 +133,23 @@ namespace cublog
 	      }
 	    calculate_replication_delay_or_dispatch_async<LOG_REC_DONETIME> (
 		    thread_entry, m_redo_lsa);
+
+	    if (m_bookkeep.count (tranid) != 0)
+	      {
+		locator_initialize (&thread_entry);
+
+		for (auto it = m_bookkeep.lower_bound (tranid); it != m_bookkeep.upper_bound (tranid); it++)
+		  {
+		    const OID classoid = it->second;
+		    heap_classrepr_decache (&thread_entry, &classoid);
+		    xcache_remove_by_oid (&thread_entry, &classoid);
+		    fpcache_remove_by_class (&thread_entry, &classoid);
+		    partition_decache_class (&thread_entry, &classoid);
+		    lock_unlock_object (&thread_entry, &classoid, oid_Root_class_oid, SCH_M_LOCK, true);
+		  }
+
+		m_bookkeep.erase (tranid);
+	      }
 	    break;
 	  case LOG_ABORT:
 	    // TODO: there are 2 identified sources for aborted transactions:
@@ -149,6 +179,20 @@ namespace cublog
 	      }
 	    calculate_replication_delay_or_dispatch_async<LOG_REC_DONETIME> (
 		    thread_entry, m_redo_lsa);
+
+	    if (m_bookkeep.count (tranid) != 0)
+	      {
+		// invalidated classname should be re-loaded
+		// locator_initialize(&thread_entry);
+		for (auto it = m_bookkeep.lower_bound (tranid); it != m_bookkeep.upper_bound (tranid); it++)
+		  {
+		    const OID classoid = it->second;
+		    lock_unlock_object (&thread_entry, &classoid, oid_Root_class_oid, SCH_M_LOCK, true);
+		  }
+
+		m_bookkeep.erase (tranid);
+	      }
+
 	    break;
 	  case LOG_DUMMY_HA_SERVER_STATE:
 	    calculate_replication_delay_or_dispatch_async<LOG_REC_HA_SERVER_STATE> (
@@ -216,6 +260,24 @@ namespace cublog
 	      }
 	    break;
 	  }
+	  case LOG_DDL_LOCK:
+	  {
+	    char classname_buf[1024];
+	    char *classname_ptr = classname_buf;
+
+	    m_redo_context.m_reader.advance_when_does_not_fit (sizeof (LOG_REC_DDL_LOCK));
+	    const LOG_REC_DDL_LOCK log_rec =
+		    m_redo_context.m_reader.reinterpret_copy_and_add_align<LOG_REC_DDL_LOCK> ();
+	    (void) lock_object (&thread_entry, &log_rec.oid, oid_Root_class_oid, log_rec.lock, LK_UNCOND_LOCK);
+
+	    // invalidate classname cache by oid, and get the classname of the invalidated class
+	    // locator_drop_class_by_oid(&thread_entry, &log_rec.oid, &classname_ptr);
+	    // er_log_debug(ARG_FILE_LINE, "classname for LOG_DDL_LOCK : %s \n", classname_ptr);
+
+	    m_bookkeep.emplace (tranid, log_rec.oid);
+	    break;
+	  }
+
 	  default:
 	    // do nothing
 	    break;

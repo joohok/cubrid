@@ -151,6 +151,7 @@ enum log_rectype
   LOG_SUPPLEMENTAL_INFO,        /* used for supplemental logs to support CDC interface.
                                  * it contains transaction user info, DDL statement, undo lsa, redo lsa for DML,
                                  * or undo images that never retrieved from the log. */
+  LOG_DDL_LOCK,
 
   /* NOTE: add actual (persistent) new values before this */
   LOG_DUMMY_UNIT_TESTING,	/* exclusively for unit testing; not to be persisted;
@@ -444,7 +445,8 @@ typedef enum supplement_rec_type
   LOG_SUPPLEMENT_TRIGGER_INSERT, /* INSERT, UPDATE, DELETE logs appended by a trigger action */
   LOG_SUPPLEMENT_TRIGGER_UPDATE,
   LOG_SUPPLEMENT_TRIGGER_DELETE,
-  LOG_SUPPLEMENT_LARGER_REC_TYPE,
+  LOG_SUPPLEMENT_LOCK,
+  LOG_SUPPLEMENT_LARGER_REC_TYPE
 } SUPPLEMENT_REC_TYPE;
 
 typedef struct log_rec_supplement LOG_REC_SUPPLEMENT;
@@ -452,6 +454,13 @@ struct log_rec_supplement
 {
   SUPPLEMENT_REC_TYPE rec_type;
   int length;
+};
+
+typedef struct log_rec_ddl_lock LOG_REC_DDL_LOCK;
+struct log_rec_ddl_lock
+{
+  LOCK lock;
+  OID oid;
 };
 
 #define LOG_GET_LOG_RECORD_HEADER(log_page_p, lsa) \

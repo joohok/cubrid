@@ -20,6 +20,9 @@
  * locator_sr.c : Transaction object locator (at server)
  */
 
+#include "memory_hash.h"
+#include "storage_common.h"
+#include "thread_compat.hpp"
 #ident "$Id$"
 
 #include "config.h"
@@ -453,7 +456,7 @@ xlocator_reserve_class_names (THREAD_ENTRY * thread_p, const int num_classes, co
 static LC_FIND_CLASSNAME
 xlocator_reserve_class_name (THREAD_ENTRY * thread_p, const char *classname, OID * class_oid)
 {
-  LOCATOR_CLASSNAME_ENTRY *entry;
+  LOCATOR_CLASSNAME_ENTRY *entry = NULL;
   LOCATOR_CLASSNAME_ACTION *old_action;
   LC_FIND_CLASSNAME reserve = LC_CLASSNAME_RESERVED;
   OID tmp_classoid;
@@ -636,6 +639,7 @@ start:
   /*
    * Get the lock on the class if we were able to reserve the name
    */
+// if (reserve == LC_CLASSNAME_RESERVED && entry != NULL && class_oid->volid != -2)
   if (reserve == LC_CLASSNAME_RESERVED && entry != NULL)
     {
       assert (entry->e_tran_index == tran_index);
@@ -1801,6 +1805,48 @@ locator_dump_class_names (THREAD_ENTRY * thread_p, FILE * out_fp)
 #if defined(NDEBUG)		/* skip at debug build */
   csect_exit (thread_p, CSECT_LOCATOR_SR_CLASSNAME_TABLE);
 #endif
+}
+
+void
+locator_drop_class_by_oid (THREAD_ENTRY * thread_p, const OID * classoid, char **classname_out)
+{
+  HENTRY_PTR hentry;
+  HENTRY_PTR next;
+  LOCATOR_CLASSNAME_ENTRY *entry;
+
+  if (csect_enter (thread_p, CSECT_LOCATOR_SR_CLASSNAME_TABLE, INF_WAIT) != NO_ERROR)
+    {
+      assert (false);
+      return;
+    }
+
+  for (hentry = locator_Mht_classnames->act_head; hentry != NULL; hentry = next)
+    {
+      next = hentry->act_next;
+      entry = (LOCATOR_CLASSNAME_ENTRY *) hentry->data;
+
+      if (OID_EQ (&entry->e_current.oid, classoid))
+	{
+	  if (csect_enter (thread_p, CSECT_CT_OID_TABLE, INF_WAIT) != NO_ERROR)
+	    {
+	      assert (false);
+
+	      csect_exit (thread_p, CSECT_LOCATOR_SR_CLASSNAME_TABLE);
+	      return;
+	    }
+
+	  entry->e_current.action = LC_CLASSNAME_DELETED;
+	  strcpy (*classname_out, entry->e_name);
+
+	  (void) locator_force_drop_class_name_entry (entry->e_name, entry, NULL);
+
+	  csect_exit (thread_p, CSECT_CT_OID_TABLE);
+
+	  break;
+	}
+    }
+
+  csect_exit (thread_p, CSECT_LOCATOR_SR_CLASSNAME_TABLE);
 }
 
 /*

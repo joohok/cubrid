@@ -21,6 +21,7 @@
 
 #include "atomic_replication_helper.hpp"
 #include "log_replication.hpp"
+#include "storage_common.h"
 
 namespace cublog
 {
@@ -98,6 +99,8 @@ namespace cublog
 
       log_lsa m_lowest_unapplied_lsa;
       mutable std::mutex m_lowest_unapplied_lsa_mutex;
+
+      std::multimap <TRANID, OID> m_bookkeep;
   };
 }
 

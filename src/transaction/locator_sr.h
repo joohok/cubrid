@@ -68,6 +68,7 @@ extern int locator_savepoint_transient_class_name_entries (THREAD_ENTRY * thread
 extern DISK_ISVALID locator_check_class_names (THREAD_ENTRY * thread_p);
 extern void locator_dump_class_names (THREAD_ENTRY * thread_p, FILE * out_fp);
 
+extern void locator_drop_class_by_oid (THREAD_ENTRY * thread_p, const OID * classoid, char **classname_out);
 extern int xlc_fetch_allrefslockset (OID * oid, int chn, OID * class_oid, int class_chn, LOCK lock, int quit_on_errors,
 				     int prune_level, LC_LOCKSET ** lockset, LC_COPYAREA ** fetch_area);
 extern int locator_start_force_scan_cache (THREAD_ENTRY * thread_p, HEAP_SCANCACHE * scan_cache, const HFID * hfid,

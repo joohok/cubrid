@@ -67,6 +67,7 @@
 #include "wait_for_graph.h"
 #include "xserver_interface.h"
 #include "xasl.h"
+#include "server_type.hpp"
 
 #include <array>
 
@@ -6121,6 +6122,18 @@ end:
       er_log_debug (ARG_FILE_LINE, "lock_object: %6d.%06d\n", elapsed_time.tv_sec, elapsed_time.tv_usec);
     }
 #endif
+  if (OID_IS_ROOTOID (class_oid) && lock == SCH_M_LOCK && granted == LK_GRANTED)
+    {
+      OID tempoid;
+      const char *data = "DUMMY";
+      if (is_active_transaction_server ())
+	{
+	  log_append_ddl_lock (thread_p, lock, oid);
+	}
+
+      er_log_debug (ARG_FILE_LINE, "lock_object: JOOHO OID : %d|%d|%d, CLASSOID : %d|%d|%d, LOCK : %s, granted : %d",
+		    OID_AS_ARGS (oid), OID_AS_ARGS (class_oid), LOCK_TO_LOCKMODE_STRING (lock), granted);
+    }
 
   return granted;
 #endif /* !SERVER_MODE */

@@ -20,6 +20,8 @@
  * log_manager.c -
  */
 
+#include "oid.h"
+#include "storage_common.h"
 #ident "$Id$"
 
 #include "config.h"
@@ -292,6 +294,8 @@ static LOG_PAGE *log_dump_record_trantable_snapshot (THREAD_ENTRY * thread_p, FI
 						     LOG_PAGE * log_page_p);
 static LOG_PAGE *log_dump_record_assigned_mvccid (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa,
 						  LOG_PAGE * log_page_p);
+static LOG_PAGE *log_dump_record_ddl_lock (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa,
+					   LOG_PAGE * log_page_p);
 static LOG_PAGE *log_dump_record_supplemental_info (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa,
 						    LOG_PAGE * log_page_p);
 static LOG_PAGE *log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type, LOG_LSA * lsa_p,
@@ -501,6 +505,8 @@ log_to_string (LOG_RECTYPE type)
     case LOG_ASSIGNED_MVCCID:
       return "LOG_ASSIGNED_MVCCID";
 
+    case LOG_DDL_LOCK:
+      return "LOG_DDL_LOCK";
     case LOG_DUMMY_HA_SERVER_STATE:
       return "LOG_DUMMY_HA_SERVER_STATE";
     case LOG_DUMMY_OVF_RECORD:
@@ -3730,6 +3736,24 @@ log_append_assigned_mvccid (THREAD_ENTRY * thread_p, MVCCID mvccid)
   (void) prior_lsa_next_record (thread_p, node, tdes);
 }
 
+void
+log_append_ddl_lock (THREAD_ENTRY * thread_p, LOCK lock, const OID * oid)
+{
+  assert (!OID_ISNULL (oid));
+
+  LOG_TDES *tdes = LOG_FIND_CURRENT_TDES (thread_p);
+  assert (tdes != nullptr);
+
+  LOG_PRIOR_NODE *node = prior_lsa_alloc_and_copy_data (thread_p, LOG_DDL_LOCK, RV_NOT_DEFINED, NULL, 0, NULL, 0, NULL);
+  assert (node != nullptr);
+
+  auto recp = (LOG_REC_DDL_LOCK *) node->data_header;
+  recp->lock = lock;
+  COPY_OID (&(recp->oid), oid);
+
+  (void) prior_lsa_next_record (thread_p, node, tdes);
+}
+
 /*
  * log_find_savept_lsa - FIND LSA ADDRESS OF GIVEN SAVEPOINT
  *
@@ -6617,15 +6641,30 @@ log_dump_record_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_
   int undo_length;
   int redo_length;
   LOG_RCVINDEX rcvindex;
+  OID oid, classoid;
 
   /* Read the DATA HEADER */
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*undoredo), log_lsa, log_page_p);
   undoredo = (LOG_REC_UNDOREDO *) ((char *) log_page_p->area + log_lsa->offset);
+
+  oid.pageid = undoredo->data.pageid;
+  oid.volid = undoredo->data.volid;
+  oid.slotid = undoredo->data.offset;
+
+  if (undoredo->data.rcvindex >= 33 && undoredo->data.rcvindex <= 53)
+    {
+      (void) heap_get_class_oid (thread_p, &oid, &classoid);
+    }
+
   fprintf (out_fp, ", Recv_index = %s, \n", rv_rcvindex_string (undoredo->data.rcvindex));
   fprintf (out_fp,
 	   "     Volid = %d Pageid = %d Offset = %d,\n     Undo(Before) length = %d, Redo(After) length = %d,\n",
 	   undoredo->data.volid, undoredo->data.pageid, undoredo->data.offset, (int) GET_ZIP_LEN (undoredo->ulength),
 	   (int) GET_ZIP_LEN (undoredo->rlength));
+  if (undoredo->data.rcvindex >= 33 && undoredo->data.rcvindex <= 53)
+    {
+      fprintf (out_fp, "classoid : %d|%d|%d \n", OID_AS_ARGS (&classoid));
+    }
 
   undo_length = undoredo->ulength;
   redo_length = undoredo->rlength;
@@ -6704,10 +6743,21 @@ log_dump_record_mvcc_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA *
   int undo_length;
   int redo_length;
   LOG_RCVINDEX rcvindex;
+  OID oid, classoid;
 
   /* Read the DATA HEADER */
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*mvcc_undoredo), log_lsa, log_page_p);
   mvcc_undoredo = (LOG_REC_MVCC_UNDOREDO *) ((char *) log_page_p->area + log_lsa->offset);
+
+  oid.pageid = mvcc_undoredo->undoredo.data.pageid;
+  oid.volid = mvcc_undoredo->undoredo.data.volid;
+  oid.slotid = mvcc_undoredo->undoredo.data.offset;
+
+  if (mvcc_undoredo->undoredo.data.rcvindex >= 33 && mvcc_undoredo->undoredo.data.rcvindex <= 53)
+    {
+      (void) heap_get_class_oid (thread_p, &oid, &classoid);
+    }
+
   fprintf (out_fp, ", Recv_index = %s, \n", rv_rcvindex_string (mvcc_undoredo->undoredo.data.rcvindex));
   fprintf (out_fp,
 	   "     Volid = %d Pageid = %d Offset = %d,\n     Undo(Before) length = %d, Redo(After) length = %d,\n",
@@ -6718,6 +6768,10 @@ log_dump_record_mvcc_undoredo (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA *
 	   (long long int) mvcc_undoredo->vacuum_info.prev_mvcc_op_log_lsa.pageid,
 	   (int) mvcc_undoredo->vacuum_info.prev_mvcc_op_log_lsa.offset, mvcc_undoredo->vacuum_info.vfid.volid,
 	   mvcc_undoredo->vacuum_info.vfid.fileid);
+  if (mvcc_undoredo->undoredo.data.rcvindex >= 33 && mvcc_undoredo->undoredo.data.rcvindex <= 53)
+    {
+      fprintf (out_fp, ", classoid = %d|%d|%d \n", OID_AS_ARGS (&classoid));
+    }
 
   undo_length = mvcc_undoredo->undoredo.ulength;
   redo_length = mvcc_undoredo->undoredo.rlength;
@@ -7247,6 +7301,19 @@ log_dump_record_assigned_mvccid (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA
 }
 
 static LOG_PAGE *
+log_dump_record_ddl_lock (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa, LOG_PAGE * log_page_p)
+{
+  const LOG_REC_DDL_LOCK *ddl_lock = nullptr;
+  LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*ddl_lock), log_lsa, log_page_p);
+  ddl_lock = (LOG_REC_DDL_LOCK *) (log_page_p->area + log_lsa->offset);
+
+  fprintf (out_fp, " LOCK = %s, oid = %d|%d|%d \n", LOCK_TO_LOCKMODE_STRING (ddl_lock->lock),
+	   OID_AS_ARGS (&(ddl_lock->oid)));
+
+  return log_page_p;
+}
+
+static LOG_PAGE *
 log_dump_record_supplemental_info (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa, LOG_PAGE * log_page_p)
 {
   LOG_REC_SUPPLEMENT *supplement;
@@ -7359,6 +7426,9 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
       log_page_p = log_dump_record_assigned_mvccid (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
+    case LOG_DDL_LOCK:
+      log_page_p = log_dump_record_ddl_lock (thread_p, out_fp, log_lsa, log_page_p);
+      break;
     case LOG_SUPPLEMENTAL_INFO:
       log_page_p = log_dump_record_supplemental_info (thread_p, out_fp, log_lsa, log_page_p);
       break;
@@ -8289,6 +8359,7 @@ log_rollback (THREAD_ENTRY * thread_p, LOG_TDES * tdes, const LOG_LSA * upto_lsa
 	    case LOG_START_ATOMIC_REPL:
 	    case LOG_END_ATOMIC_REPL:
 	    case LOG_ASSIGNED_MVCCID:
+	    case LOG_DDL_LOCK:
 	    case LOG_SUPPLEMENTAL_INFO:
 	      break;
 
@@ -8725,6 +8796,7 @@ log_do_postpone (THREAD_ENTRY * thread_p, LOG_TDES * tdes, LOG_LSA * start_postp
 		    case LOG_SUPPLEMENTAL_INFO:
 		    case LOG_START_ATOMIC_REPL:
 		    case LOG_ASSIGNED_MVCCID:
+		    case LOG_DDL_LOCK:
 		    case LOG_END_ATOMIC_REPL:
 		      break;
 
