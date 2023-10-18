@@ -2727,7 +2727,7 @@ pgbuf_unfix (THREAD_ENTRY * thread_p, PAGE_PTR pgptr)
     }
 
   holder = pgbuf_get_holder (thread_p, pgptr);
-
+//fix count -- try on scalability branch
   assert (holder != NULL);
 
   watcher = holder->last_watcher;

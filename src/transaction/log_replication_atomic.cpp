@@ -187,6 +187,8 @@ namespace cublog
 		for (auto it = m_bookkeep.lower_bound (tranid); it != m_bookkeep.upper_bound (tranid); it++)
 		  {
 		    const OID classoid = it->second;
+		    locator_restore_classname_entry (&thread_entry, &classoid);
+
 		    lock_unlock_object (&thread_entry, &classoid, oid_Root_class_oid, SCH_M_LOCK, true);
 		  }
 

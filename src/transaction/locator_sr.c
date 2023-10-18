@@ -13892,3 +13892,32 @@ xsynonym_remove_xasl_by_oid (THREAD_ENTRY * thread_p, OID * oidp)
 {
   xcache_remove_by_oid (thread_p, oidp);
 }
+
+void
+locator_remove_classname_entry (THREAD_ENTRY * thread_p, const char *classname)
+{
+  LOCATOR_CLASSNAME_ENTRY *entry;
+  entry = (LOCATOR_CLASSNAME_ENTRY *) mht_get (locator_Mht_classnames, classname);
+
+  entry->e_current.action = LC_CLASSNAME_DELETED;
+}
+
+void
+locator_restore_classname_entry (THREAD_ENTRY * thread_p, const OID * classoid)
+{
+  LOCATOR_CLASSNAME_ENTRY *entry;
+  char *classname;
+
+  heap_get_class_name (thread_p, classoid, &classname);
+  entry = (LOCATOR_CLASSNAME_ENTRY *) mht_get (locator_Mht_classnames, classname);
+  if (entry != NULL)
+    {
+      if (entry->e_current.action == LC_CLASSNAME_DELETED)
+	{
+	  entry->e_current.action = LC_CLASSNAME_EXIST;
+	  entry->e_tran_index = NULL_TRAN_INDEX;
+
+	  LSA_SET_NULL (&entry->e_current.savep_lsa);
+	}
+    }
+}

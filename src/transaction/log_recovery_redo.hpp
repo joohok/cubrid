@@ -19,16 +19,20 @@
 #ifndef _LOC_RECOVERY_REDO_HPP_
 #define _LOC_RECOVERY_REDO_HPP_
 
+#include "heap_file.h"
 #include "log_compress.h"
 #include "log_lsa.hpp"
 #include "log_reader.hpp"
 #include "log_record.hpp"
 #include "log_recovery.h"
+#include "oid.h"
 #include "page_buffer.h"
 #include "perf_monitor_trackers.hpp"
 #include "scope_exit.hpp"
+#include "server_type.hpp"
 #include "system_parameter.h"
 #include "type_helper.hpp"
+#include "locator_sr.h"
 
 struct log_rv_redo_context
 {
@@ -633,6 +637,25 @@ void log_rv_redo_record_sync_apply (THREAD_ENTRY *thread_p, log_rv_redo_context 
    *    or in parallel will log to this entry
    */
   perfmon_counter_timer_raii_tracker perfmon { PSTAT_LOG_REDO_FUNC_EXEC };
+
+  if (log_data.rcvindex == RVHF_DELETE && is_passive_transaction_server())
+    {
+      const OID classoid = {log_data.pageid, log_data.offset, log_data.volid};
+      char *classname = NULL;
+      OID rootclass;
+
+      heap_get_class_oid (thread_p, &classoid, &rootclass);
+      if (OID_EQ (&rootclass, oid_Root_class_oid))
+	{
+	  heap_get_class_name (thread_p, &classoid, &classname);
+	  locator_remove_classname_entry (thread_p, classname);
+	}
+
+      if (classname != NULL)
+	{
+	  free_and_init (classname);
+	}
+    }
 
   const int err_func = redofunc (thread_p, &rcv);
   if (err_func != NO_ERROR)
